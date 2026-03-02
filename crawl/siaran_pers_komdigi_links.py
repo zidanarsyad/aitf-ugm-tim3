@@ -39,7 +39,7 @@ async def main():
     async with AsyncWebCrawler(config=browser_config) as crawler:
         url = "https://www.komdigi.go.id/berita/siaran-pers"
         page_num = 1
-        max_pages = 10
+        max_pages = 385
         
         while page_num <= max_pages:
             print(f"\n--- Scraping Page {page_num} ---")
