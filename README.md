@@ -1,4 +1,4 @@
-# 🏛️ AITF UGM Tim 3: Law & News Scraper
+# 🏛️ AITF UGM Tim 3: Strategi Komunikasi
 
 ![Project Banner](assets/banner.png)
 
@@ -97,7 +97,7 @@ Download the actual legal documents in PDF format.
 python crawl/peraturan_go_id_batch_pdf_download.py
 ```
 
-_Output: `pdf_downloads/{type}/_.pdf`\*
+_Output: `pdf_downloads/{type}/_.pdf`_
 
 ---
 
@@ -152,16 +152,41 @@ _Output: `db/siaran_pers_komdigi_all.json`_
 
 Example JSON output structure for a regulation:
 
+rekapitulasi
 ```json
 {
-  "judul": "UNDANG-UNDANG REPUBLIK INDONESIA NOMOR 1 TAHUN 2024",
-  "jenis": "Undang-Undang",
-  "nomor": "1",
-  "tahun": "2024",
-  "tentang": "PERUBAHAN KEDUA ATAS UNDANG-UNDANG NOMOR 11 TAHUN 2008 TENTANG INFORMASI DAN TRANSAKSI ELEKTRONIK",
-  "status": "Berlaku",
-  "dokumen_peraturan": "https://peraturan.go.id/common/dokumen/ln/2024/uu1-2024.pdf"
+    "tahun": int,
+    "jumlah_peraturan": int,
+    "berlaku": int,
+    "tidak_berlaku": int
 }
+```
+
+all
+```json
+{
+    "judul": string,
+    "jenis": string,
+    "pemrakarsa": string,
+    "nomor": int,
+    "tahun": int,
+    "tentang": string,
+    "tempat_penetapan": string,
+    "ditetapkan_tanggal": date,
+    "pejabat yang menetapkan": string,
+    "status": string,
+    "dokumen_peraturan": string // peraturan.go.id + /files/_.pdf
+}
+```
+
+siaran pers
+```json
+  {
+    "title": string,
+    "link": string, // www.komdigi.go.id + /berita/siaran-pers/detail/_
+    "date": date,
+    "text": string
+  }
 ```
 
 ---
