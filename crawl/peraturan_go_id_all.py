@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode, JsonCssExtractionStrategy
 
-peraturan_list = ['uu', 'perpres', 'perppu', 'penpres', 'keppres', 'inpres']
+peraturan_list = ['uu', 'pp', 'perpres', 'perppu', 'penpres', 'keppres', 'inpres', 'permenkominfo', 'permenkomdigi']
 
 async def main():
     async with AsyncWebCrawler() as crawler:
