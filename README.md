@@ -4,9 +4,19 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![Crawl4AI](https://img.shields.io/badge/powered%20by-crawl4ai-orange.svg)](https://github.com/unclecode/crawl4ai)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A high-performance web scraping suite designed for extracting Indonesian legal regulations from **peraturan.go.id** and public news from **komdigi.go.id**. Built using the powerful `crawl4ai` library for efficient, automated data extraction.
+A high-performance web scraping suite designed for extracting Indonesian legal regulations and public news. Built using the powerful `crawl4ai` library for efficient, automated data extraction.
+
+### 🔍 Sources Covered:
+
+- **Regulations**: `peraturan.go.id` (UU, Perpres, Perppu, Penpres, Keppres, Inpres, Perda, Permen, etc.)
+- **News/Press Releases**:
+  - `komdigi.go.id`
+  - `bappenas.go.id`
+  - `bgn.go.id`
+  - `esdm.go.id`
 
 ---
 
@@ -14,9 +24,11 @@ A high-performance web scraping suite designed for extracting Indonesian legal r
 
 - [🚀 Key Features](#-key-features)
 - [🛠️ Installation](#️-installation)
-- [📖 Usage Guide](#-usage-guide)
+- [� Interactive Dashboard (Recommended)](#-interactive-dashboard-recommended)
+- [�📖 CLI Usage Guide](#-cli-usage-guide)
   - [1. Peraturan.go.id (Regulations)](#1-peraturangoid-regulations)
-  - [2. Komdigi.go.id (News)](#2-komdigigoid-news)
+  - [2. General News (BAPPENAS, BGN, ESDM)](#2-general-news-bappenas-bgn-esdm)
+  - [3. Komdigi.go.id (News)](#3-komdigigoid-news)
 - [📂 Directory Structure](#-directory-structure)
 - [📦 Data Schema](#-data-schema)
 - [🛡️ License](#️-license)
@@ -25,10 +37,11 @@ A high-performance web scraping suite designed for extracting Indonesian legal r
 
 ## 🚀 Key Features
 
-- **Comprehensive Scrapes**: Supports UU, Perpres, Perppu, Penpres, Keppres, and Inpres.
+- **Multi-Source Support**: Scrapes regulations and news from 5+ Indonesian government portals.
+- **Interactive UI**: Built-in Streamlit dashboard for monitoring and running crawls.
 - **Smart Extraction**: Uses CSS-based JSON extraction strategies.
 - **Batch Processing**: Handles multi-page navigation and batch PDF downloads.
-- **Data Integrity**: Includes deduplication scripts to ensure clean datasets.
+- **Data Enrichment**: Automatically extracts metadata from downloaded PDFs.
 - **Asynchronous**: Built on `asyncio` for high-speed concurrent crawling.
 
 ---
@@ -48,10 +61,12 @@ cd aitf-ugm-tim3
 
 # Create a virtual environment (optional but recommended)
 python -m venv venv
-source venv/bin/scripts/activate  # On Windows: venv\Scripts\activate
+source venv/bin/scripts/activate  # On Windows: venv\\Scripts\\activate
 
 # Install dependencies
-pip install crawl4ai aiohttp
+pip install -r requirements.txt
+# Or manually:
+pip install crawl4ai aiohttp streamlit nesting-asyncio pypdf
 ```
 
 ### 3. Initialize Crawl4AI
@@ -63,75 +78,84 @@ crawl4ai-doctor  # Verify the installation
 
 ---
 
-## 📖 Usage Guide
+## � Interactive Dashboard (Recommended)
+
+The easiest way to use this tool is via the Streamlit dashboard:
+
+```bash
+streamlit run crawl/app_crawl.py
+```
+
+**Features in Dashboard:**
+
+- **Stats Overview**: View total records and storage used.
+- **Regulation Scraper**: Run 3-step regulation crawling (Rekap -> Details -> PDF).
+- **News Scraper**: Crawl links and full content from multiple government sites simultaneously.
+- **Real-time Logs**: Monitor scraping progress in the sidebar.
+
+---
+
+## 📖 CLI Usage Guide
 
 ### 1. Peraturan.go.id (Regulations)
 
-The workflow for scraping regulations involves three main steps:
-
 #### **Step A: Generate Rekapitulasi**
 
-First, gather the metadata and counts of regulations per year.
+Gather metadata and counts of regulations per year.
 
 ```bash
 python crawl/peraturan_go_id_rekapitulasi.py
 ```
 
-_Output: `db/peraturan_go_id_rekapitulasi_{type}.json`_
-
 #### **Step B: Scrape Detailed Data**
 
-Use the rekapitulasi data to crawl individual regulation pages.
+Use rekapitulasi data to crawl individual regulation pages.
 
 ```bash
 python crawl/peraturan_go_id_all.py
 ```
 
-_Output: `db/peraturan_go_id_all_{type}.json`_
+#### **Step C: Download PDFs & Extract Metadata**
 
-#### **Step C: Download PDFs**
-
-Download the actual legal documents in PDF format.
+Download documents and enrich JSON with PDF metadata.
 
 ```bash
 python crawl/peraturan_go_id_batch_pdf_download.py
+python crawl/peraturan_go_id_pdf_metadata.py
 ```
-
-_Output: `pdf_downloads/{type}/_.pdf`_
 
 ---
 
-### 2. Komdigi.go.id (News)
+### 2. General News (BAPPENAS, BGN, ESDM)
 
-The workflow for scraping Komdigi news articles:
+#### **Step A: Crawl Links**
 
-#### **Step A: Extract Links**
+```bash
+python crawl/siaran_pers_general_links.py
+```
 
-Collect all article links from the news archive.
+#### **Step B: Crawl Content**
+
+```bash
+python crawl/siaran_pers_general.py
+```
+
+---
+
+### 3. Komdigi.go.id (News)
+
+#### **Step A: Extract Links & Remove Duplicates**
 
 ```bash
 python crawl/siaran_pers_komdigi_links.py
-```
-
-_Output: `db/siaran_pers_komdigi_links.json`_
-
-#### **Step B: Clean Data**
-
-Remove duplicate links if necessary.
-
-```bash
 python crawl/siaran_pers_komdigi_remove_duplicates.py
 ```
 
-#### **Step C: Scrape Content**
-
-Extract full content from the collected links.
+#### **Step B: Scrape Content**
 
 ```bash
 python crawl/siaran_pers_komdigi.py
 ```
-
-_Output: `db/siaran_pers_komdigi_all.json`_
 
 ---
 
@@ -139,9 +163,14 @@ _Output: `db/siaran_pers_komdigi_all.json`_
 
 ```text
 .
+├── crawl/            # Python scraping scripts & UI
+│   ├── app_crawl.py         # Streamlit Dashboard
+│   ├── config.py            # Regulation config
+│   ├── config_general.py    # News portal configs (BAPPENAS, etc.)
+│   ├── pipeline.py          # CLI Workflow orchestrator
+│   └── ...                  # Individual scrapers
+├── db/               # JSON output files (The database)
 ├── assets/           # Media assets for README
-├── crawl/            # Python scraping scripts
-├── db/               # JSON output files
 ├── pdf_downloads/    # Downloaded PDF documents
 └── README.md         # Project documentation
 ```
@@ -150,43 +179,29 @@ _Output: `db/siaran_pers_komdigi_all.json`_
 
 ## 📦 Data Schema
 
-Example JSON output structure for a regulation:
+### Regulation Schema
 
-rekapitulasi
 ```json
 {
-    "tahun": int,
-    "jumlah_peraturan": int,
-    "berlaku": int,
-    "tidak_berlaku": int
+  "judul": "PERATURAN PEMERINTAH NOMOR 1 TAHUN 2024",
+  "jenis": "Peraturan Pemerintah",
+  "nomor": 1,
+  "tahun": 2024,
+  "status": "Berlaku",
+  "dokumen_peraturan": "https://peraturan.go.id/files/..."
 }
 ```
 
-all
+### News Schema (General & Komdigi)
+
 ```json
 {
-    "judul": string,
-    "jenis": string,
-    "pemrakarsa": string,
-    "nomor": int,
-    "tahun": int,
-    "tentang": string,
-    "tempat_penetapan": string,
-    "ditetapkan_tanggal": date,
-    "pejabat yang menetapkan": string,
-    "status": string,
-    "dokumen_peraturan": string // peraturan.go.id + /files/_.pdf
+  "source": "BAPPENAS",
+  "title": "Menteri Bappenas Tekankan Pentingnya Transformasi Ekonomi",
+  "link": "https://www.bappenas.go.id/...",
+  "date": "01 Januari 2024",
+  "text": "Full article content here..."
 }
-```
-
-siaran pers
-```json
-  {
-    "title": string,
-    "link": string, // www.komdigi.go.id + /berita/siaran-pers/detail/_
-    "date": date,
-    "text": string
-  }
 ```
 
 ---

@@ -35,7 +35,8 @@ def main():
             "scripts": [
                 "peraturan_go_id_rekapitulasi.py",
                 "peraturan_go_id_all.py",
-                "peraturan_go_id_batch_pdf_download.py"
+                "peraturan_go_id_batch_pdf_download.py",
+                "peraturan_go_id_pdf_metadata.py"
             ]
         },
         "2": {
@@ -45,13 +46,21 @@ def main():
                 "siaran_pers_komdigi_remove_duplicates.py",
                 "siaran_pers_komdigi.py"
             ]
+        },
+        "3": {
+            "name": "General News Pipeline (BAPPENAS, BGN, ESDM)",
+            "scripts": [
+                "siaran_pers_general_links.py",
+                "siaran_pers_general.py"
+            ]
         }
     }
 
     print("\nSelect Pipeline to run:")
-    print("1. Regulation Pipeline (Rekap -> Scrape -> Download PDF)")
+    print("1. Regulation Pipeline (Rekap -> Scrape -> Download PDF -> Metadata)")
     print("2. Komdigi News Pipeline (Links -> Clean -> Scrape Content)")
-    print("3. Run ALL")
+    print("3. General News Pipeline (Links -> Scrape Content)")
+    print("4. Run ALL")
     print("Q. Quit")
 
     choice = input("\nEnter choice: ").strip().lower()
@@ -62,7 +71,9 @@ def main():
     elif choice == '2':
         selected_scripts = pipelines["2"]["scripts"]
     elif choice == '3':
-        selected_scripts = pipelines["1"]["scripts"] + pipelines["2"]["scripts"]
+        selected_scripts = pipelines["3"]["scripts"]
+    elif choice == '4':
+        selected_scripts = pipelines["1"]["scripts"] + pipelines["2"]["scripts"] + pipelines["3"]["scripts"]
     elif choice == 'q':
         return
     else:

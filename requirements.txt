@@ -1,0 +1,7 @@
+crawl4ai
+aiohttp
+streamlit
+nest-asyncio
+pypdf
+# Optional for interactive crawling
+playwright
