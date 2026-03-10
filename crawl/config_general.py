@@ -109,11 +109,85 @@ GENERAL_SITES_CONFIG = {
             },
             "wait_for": "div.news-read"
         }
+    },
+    "BUMN": {
+        "links": {
+            "url_template": "https://www.bumn.go.id/publikasi/berita/rilis?page={page}",
+            "schema": {
+                "name": "BUMN_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {
+                        "name": "page", 
+                        "selector": "div.content-pagination a.active", 
+                        "type": "text"
+                    },
+                    {
+                        "name": "news_items",
+                        "selector": "div.content_rilis",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "label", "type": "text"},
+                            {"name": "link", "selector": "a.all_read", "type": "attribute", "attribute": "href"},
+                        ]
+                    }
+                ]
+            },
+            "wait_for": "div.data_content"
+        },
+        "detail": {
+            "schema": {
+                "name": "BUMN_DETAIL",
+                "baseSelector": "section.content_rilis",
+                "fields": [
+                    {"name": "date", "selector": "div.date span", "type": "text"},
+                    {"name": "text", "selector": "div.informasi", "type": "text"}
+                ]
+            },
+            "wait_for": "div.informasi"
+        }
+    },
+    "PU": {
+        "links": {
+            "url_template": "https://pu.go.id/berita/kanal?page={page}",
+            "schema": {
+                "name": "PU_LINKS",
+                "baseSelector": "div.col-md-8.col-lg-8.order-1.mb-5.mb-md-0",
+                "fields": [
+                    {
+                        "name": "page", 
+                        "selector": "ul.pagination li.active", 
+                        "type": "text"
+                    },
+                    {
+                        "name": "news_items",
+                        "selector": "article",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "a h2", "type": "text"},
+                            {"name": "link", "selector": "a", "type": "attribute", "attribute": "href"},
+                        ]
+                    }
+                ]
+            },
+            "wait_for": "article"
+        },
+        "detail": {
+            "schema": {
+                "name": "PU_DETAIL",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "date", "selector": "article.blog-post span.post-date", "type": "text"},
+                    {"name": "text", "selector": "article.blog-post", "type": "text"}
+                ]
+            },
+            "wait_for": "article.blog-post"
+        }
     }
 }
 
 SCRAPER_CONFIG = {
-    "max_pages": 1,
+    "max_pages": 3,
     "max_consecutive_empty": 1,
     "concurrency_limit": 5,
     "polite_delay": 0.5,

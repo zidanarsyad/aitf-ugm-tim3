@@ -1,0 +1,128 @@
+[
+  {
+    "tahun": 2026,
+    "jumlah_peraturan": 10,
+    "berlaku": 10,
+    "tidak_berlaku": 0
+  },
+  {
+    "tahun": 2025,
+    "jumlah_peraturan": 120,
+    "berlaku": 120,
+    "tidak_berlaku": 0
+  },
+  {
+    "tahun": 2024,
+    "jumlah_peraturan": 122,
+    "berlaku": 122,
+    "tidak_berlaku": 0
+  },
+  {
+    "tahun": 2023,
+    "jumlah_peraturan": 139,
+    "berlaku": 133,
+    "tidak_berlaku": 6
+  },
+  {
+    "tahun": 2022,
+    "jumlah_peraturan": 236,
+    "berlaku": 226,
+    "tidak_berlaku": 10
+  },
+  {
+    "tahun": 2021,
+    "jumlah_peraturan": 221,
+    "berlaku": 194,
+    "tidak_berlaku": 27
+  },
+  {
+    "tahun": 2020,
+    "jumlah_peraturan": 211,
+    "berlaku": 186,
+    "tidak_berlaku": 25
+  },
+  {
+    "tahun": 2019,
+    "jumlah_peraturan": 224,
+    "berlaku": 179,
+    "tidak_berlaku": 45
+  },
+  {
+    "tahun": 2018,
+    "jumlah_peraturan": 195,
+    "berlaku": 167,
+    "tidak_berlaku": 28
+  },
+  {
+    "tahun": 2017,
+    "jumlah_peraturan": 254,
+    "berlaku": 212,
+    "tidak_berlaku": 42
+  },
+  {
+    "tahun": 2016,
+    "jumlah_peraturan": 243,
+    "berlaku": 189,
+    "tidak_berlaku": 54
+  },
+  {
+    "tahun": 2015,
+    "jumlah_peraturan": 269,
+    "berlaku": 210,
+    "tidak_berlaku": 59
+  },
+  {
+    "tahun": 2014,
+    "jumlah_peraturan": 300,
+    "berlaku": 223,
+    "tidak_berlaku": 77
+  },
+  {
+    "tahun": 2013,
+    "jumlah_peraturan": 225,
+    "berlaku": 184,
+    "tidak_berlaku": 41
+  },
+  {
+    "tahun": 2012,
+    "jumlah_peraturan": 252,
+    "berlaku": 213,
+    "tidak_berlaku": 39
+  },
+  {
+    "tahun": 2011,
+    "jumlah_peraturan": 254,
+    "berlaku": 228,
+    "tidak_berlaku": 26
+  },
+  {
+    "tahun": 2010,
+    "jumlah_peraturan": 325,
+    "berlaku": 297,
+    "tidak_berlaku": 28
+  },
+  {
+    "tahun": 2009,
+    "jumlah_peraturan": 165,
+    "berlaku": 147,
+    "tidak_berlaku": 18
+  },
+  {
+    "tahun": 2008,
+    "jumlah_peraturan": 13,
+    "berlaku": 9,
+    "tidak_berlaku": 4
+  },
+  {
+    "tahun": 2007,
+    "jumlah_peraturan": 9,
+    "berlaku": 4,
+    "tidak_berlaku": 5
+  },
+  {
+    "tahun": 2005,
+    "jumlah_peraturan": 1,
+    "berlaku": 1,
+    "tidak_berlaku": 0
+  }
+]

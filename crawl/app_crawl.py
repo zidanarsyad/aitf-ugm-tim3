@@ -15,6 +15,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+# Global Constants
+TOTAL_REGULATIONS_GOAL = 61815
+
 # Add current directory to path if needed for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -207,19 +210,26 @@ with tab0:
         
         # 1. Regulation Stats
         reg_files = [f for f in all_files if "peraturan_go_id_all" in f.name]
-        total_regs = 0
+        total_regs, total_docs = 0, 0
         reg_counts = {}
         for f in reg_files:
             try:
                 with open(f, 'r', encoding='utf-8') as j:
                     data = json.load(j)
-                    count = len(data)
-                    total_regs += count
+                    total_regs += len(data)
+                    for item in data:
+                        doc_link = item.get('dokumen_peraturan')
+                        if doc_link and isinstance(doc_link, str) and doc_link.strip():
+                            total_docs += 1
+                            
                     type_key = f.name.split('_')[-1].replace('.json', '')
-                    reg_counts[type_key] = count
+                    reg_counts[type_key] = len(data)
             except: pass
             
-        m_col1.metric("Total Regulations", f"{total_regs:,}")
+        progress_pct = (total_regs / TOTAL_REGULATIONS_GOAL) * 100 if total_regs > 0 else 0
+        m_col1.metric("Crawled Regulations", f"{total_regs:,}")
+        m_col2.metric("Valid Documents", f"{total_docs:,}")
+        m_col3.metric("Crawl Progress", f"{progress_pct:.2f}%")
         
         # 2. Press Release Stats
         news_file = db_dir / "siaran_pers_general.json"
@@ -247,20 +257,15 @@ with tab0:
                     news_by_source['KOMDIGI'] = len(data)
             except: pass
             
-        m_col2.metric("Press Releases", f"{total_news:,}")
+        m_col4.metric("Press Releases", f"{total_news:,}")
         
         # 3. PDF Stats
         pdf_dir = PDF_ROOT
         all_pdfs = list(pdf_dir.glob("**/*.pdf")) if pdf_dir.exists() else []
         pdf_size = sum(f.stat().st_size for f in all_pdfs) / (1024 * 1024) if all_pdfs else 0
-        m_col3.metric("Total PDF Files", f"{len(all_pdfs):,}")
+        m_col5.metric("Downloaded PDF Files", f"{len(all_pdfs):,}")
 
-        # 4. JSON Stats
-        m_col4.metric("Total JSON Files", len(all_files))
-        
-        # 5. Storage Stats
-        json_size = sum(f.stat().st_size for f in all_files) / (1024 * 1024)
-        m_col5.metric("JSON Storage", f"{json_size:.2f} MB")
+        # 4. Storage Stats
         m_col6.metric("PDF Storage", f"{pdf_size:.2f} MB")
         
         st.divider()
@@ -396,6 +401,12 @@ with tab1:
 with tab2:
     st.header("Press Releases Scraper (General)")
     
+    selected_sites = st.multiselect(
+        "Select Sites to Scrape", 
+        options=list(GENERAL_SITES_CONFIG.keys()), 
+        default=list(GENERAL_SITES_CONFIG.keys())
+    )
+    
     col_l, col_r = st.columns(2)
     
     with col_l:
@@ -412,15 +423,29 @@ with tab2:
                     # Temporarily override config max_pages
                     SCRAPER_CONFIG["max_pages"] = max_pages
                     
-                    all_results = []
-                    for site_name, site_config in GENERAL_SITES_CONFIG.items():
-                        st.write(f"Processing {site_name}...")
-                        site_links = await scraper.scrape_site_links(site_name, site_config)
-                        all_results.extend(site_links)
+                    # Load existing links to avoid duplicates
+                    existing_all_links = []
+                    existing_links_set = set()
+                    if os.path.exists(OUTPUT_LINKS_FILE):
+                        try:
+                            with open(OUTPUT_LINKS_FILE, 'r', encoding='utf-8') as f:
+                                existing_all_links = json.load(f)
+                                existing_links_set = {item['link'] for item in existing_all_links}
+                        except: pass
+
+                    new_results = []
+                    for site_name in selected_sites:
+                        if site_name in GENERAL_SITES_CONFIG:
+                            site_config = GENERAL_SITES_CONFIG[site_name]
+                            st.write(f"Processing {site_name}...")
+                            site_links = await scraper.scrape_site_links(site_name, site_config, existing_links_set)
+                            new_results.extend(site_links)
                     
+                    # Merge and save
+                    final_all_links = new_results + existing_all_links
                     with open(OUTPUT_LINKS_FILE, 'w', encoding='utf-8') as f:
-                        json.dump(all_results, f, indent=2, ensure_ascii=False)
-                    return all_results
+                        json.dump(final_all_links, f, indent=2, ensure_ascii=False)
+                    return final_all_links
             
             with st.spinner("Crawling links..."):
                 links = asyncio.run(run_links())
@@ -445,7 +470,7 @@ with tab2:
                         tasks = []
                         for i, item in enumerate(news_items):
                             source = item.get('source')
-                            if source in GENERAL_SITES_CONFIG:
+                            if source in selected_sites and source in GENERAL_SITES_CONFIG:
                                 tasks.append(scraper.scrape_article(item, GENERAL_SITES_CONFIG[source], i, len(news_items)))
                         
                         results = await asyncio.gather(*tasks)
