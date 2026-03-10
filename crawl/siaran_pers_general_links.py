@@ -1,82 +1,92 @@
+"""
+crawl/siaran_pers_general_links.py
+Scrape link lists from BAPPENAS, BGN, ESDM news portals.
+
+Changes from original:
+- Config imported from core/settings.py
+- Schemas imported from core/settings.py (GENERAL_SITES_CONFIG)
+- Links saved to DB_DIR/siaran_pers_general_links.json (cwd-independent)
+"""
+from __future__ import annotations
+
 import asyncio
 import json
-import logging
 import sys
+from pathlib import Path
 from urllib.parse import urljoin
+
+# Add project root to sys.path for direct execution
+root_dir = Path(__file__).parent.parent.resolve()
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 
-from config_general import GENERAL_SITES_CONFIG, SCRAPER_CONFIG, OUTPUT_LINKS_FILE
+from crawl.core.settings import GENERAL_SITES_CONFIG, SCRAPER_CONFIG, DB_DIR
+from crawl.core.utils import setup_logging
 
-# Ensure UTF-8 output on Windows
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+logger = setup_logging(__name__)
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+OUTPUT_LINKS_FILE = DB_DIR / "siaran_pers_general_links.json"
+
 
 class GeneralLinksScraper:
-    def __init__(self, crawler):
+    def __init__(self, crawler: AsyncWebCrawler) -> None:
         self.crawler = crawler
 
-    async def scrape_site_links(self, site_name: str, site_config: dict):
-        links_config = site_config["links"]
-        url_template = links_config["url_template"]
-        schema = links_config["schema"]
-        
-        all_links = []
-        page_num = 1
+    async def scrape_site_links(self, site_name: str, site_config: dict) -> list[dict]:
+        links_cfg   = site_config["links"]
+        url_template = links_cfg["url_template"]
+        schema       = links_cfg["schema"]
+
+        all_links: list[dict] = []
         consecutive_empty = 0
-        
-        logger.info(f"--- Starting link crawl for {site_name} ---")
-        
-        while page_num <= SCRAPER_CONFIG["max_pages"]:
+
+        logger.info("--- Starting link crawl for %s ---", site_name)
+
+        for page_num in range(1, SCRAPER_CONFIG["max_pages"] + 1):
             url = url_template.format(page=page_num)
-            logger.info(f"[{site_name}] Crawling page {page_num}: {url}")
-            
+            logger.info("[%s] Page %d: %s", site_name, page_num, url)
+
             run_config = CrawlerRunConfig(
                 extraction_strategy=JsonCssExtractionStrategy(schema),
                 cache_mode=CacheMode.BYPASS,
-                wait_for=f"css:{links_config['wait_for']}",
-                js_code=links_config.get("js_code"),
-                wait_for_timeout=SCRAPER_CONFIG["wait_timeout"]
+                wait_for=f"css:{links_cfg['wait_for']}",
+                js_code=links_cfg.get("js_code"),
+                wait_for_timeout=SCRAPER_CONFIG["wait_timeout"],
             )
-            
+
             try:
                 result = await self.crawler.arun(url=url, config=run_config)
-                
                 if not result.success:
-                    logger.error(f"[{site_name}] Failed to crawl page {page_num}: {result.error_message}")
+                    logger.error("[%s] Page %d failed: %s", site_name, page_num, result.error_message)
                     break
-                
-                data = json.loads(result.extracted_content)
+
+                data = json.loads(result.extracted_content or "[]")
                 news_items = self._extract_news_items(data)
-                
+
                 if not news_items:
-                    logger.warning(f"[{site_name}] No news items found on page {page_num}.")
+                    logger.warning("[%s] No items on page %d.", site_name, page_num)
                     consecutive_empty += 1
                     if consecutive_empty >= SCRAPER_CONFIG["max_consecutive_empty"]:
                         break
                 else:
                     consecutive_empty = 0
-                    processed_items = self._process_items(news_items, url, site_name, page_num)
-                    all_links.extend(processed_items)
-                    logger.info(f"[{site_name}] Found {len(processed_items)} items.")
-                
-                page_num += 1
+                    processed = self._process_items(news_items, url, site_name, page_num)
+                    all_links.extend(processed)
+                    logger.info("[%s] Found %d items.", site_name, len(processed))
+
                 await asyncio.sleep(SCRAPER_CONFIG["polite_delay"])
-                
-            except Exception as e:
-                logger.error(f"[{site_name}] Error on page {page_num}: {e}")
+
+            except Exception as exc:
+                logger.error("[%s] Error on page %d: %s", site_name, page_num, exc)
                 break
-                
+
         return all_links
 
-    def _extract_news_items(self, data):
-        """Extracts list of news items from nested extraction results."""
+    # ------------------------------------------------------------------
+    def _extract_news_items(self, data) -> list[dict]:
         if isinstance(data, list):
             if data and "title" in data[0]:
                 return data
@@ -86,32 +96,32 @@ class GeneralLinksScraper:
             return data.get("news_items", [])
         return []
 
-    def _process_items(self, items, base_url, source_name, page_num):
-        """Cleans and annotates each news item."""
+    def _process_items(self, items: list[dict], base_url: str, source: str, page: int) -> list[dict]:
         for item in items:
             link = item.get("link", "")
             if link and not link.startswith("http"):
                 item["link"] = urljoin(base_url, link)
-            item["source"] = source_name
-            item["scraped_at_page"] = page_num
+            item["source"] = source
+            item["scraped_at_page"] = page
         return items
 
-async def main():
+
+async def main() -> None:
     browser_config = BrowserConfig(headless=True, verbose=False)
-    
     async with AsyncWebCrawler(config=browser_config) as crawler:
         scraper = GeneralLinksScraper(crawler)
-        all_results = []
-        
+        all_results: list[dict] = []
+
         for site_name, site_config in GENERAL_SITES_CONFIG.items():
-            site_links = await scraper.scrape_site_links(site_name, site_config)
-            all_results.extend(site_links)
-            
-        logger.info(f"\nScraping complete! Total links: {len(all_results)}")
-        
-        with open(OUTPUT_LINKS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(all_results, f, indent=2, ensure_ascii=False)
-        logger.info(f"Results saved to {OUTPUT_LINKS_FILE}")
+            links = await scraper.scrape_site_links(site_name, site_config)
+            all_results.extend(links)
+
+        logger.info("Total links collected: %d", len(all_results))
+        OUTPUT_LINKS_FILE.write_text(
+            json.dumps(all_results, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        logger.info("Saved to %s", OUTPUT_LINKS_FILE)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

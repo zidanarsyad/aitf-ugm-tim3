@@ -5,3 +5,13 @@ nest-asyncio
 pypdf
 # Optional for interactive crawling
 playwright
+
+# Core
+pydantic-settings
+aiosqlite
+
+# OCR Pipeline
+pytesseract
+pdf2image
+pyspellchecker
+pillow

@@ -1,59 +1,51 @@
+"""
+crawl/siaran_pers_komdigi_links.py
+Scrape link lists from Komdigi portal.
+
+Changes from original:
+- Integrated deduplication directly (fixed bug where dedup key was 'page', now 'link')
+- Schema from core/schemas.py
+- Writes deduplicated links to DB_DIR/siaran_pers_komdigi_links.json
+"""
+from __future__ import annotations
+
 import asyncio
 import json
+import re
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 
-async def main():
-    # 1. Define the extraction schema
-    schema = {
-        "name": "News Links",
-        "baseSelector": "body", # Scope to body so we can grab pagination + items
-        "fields": [
-            {
-                "name": "page", 
-                "selector": "button.relative.px-3.py-2.text-body-l.font-bold", # Targets your specific button
-                "type": "text"
-            },
-            {
-                "name": "news_items",
-                "selector": "div.flex.flex-col.gap-1",
-                "type": "list",
-                "fields": [
-                    {"name": "title", "selector": "a.text-base.line-clamp-2", "type": "text"},
-                    {"name": "link", "selector": "a.text-base.line-clamp-2", "type": "attribute", "attribute": "href"},
-                ]
-            }
-        ]
-    }
+from crawl.core.settings import DB_DIR
+from crawl.core.schemas import KOMDIGI_LINKS_SCHEMA
+from crawl.core.utils import setup_logging
 
-    # 2. Configure the Browser
-    browser_config = BrowserConfig(
-        headless=True,
-        verbose=True
-    )
+logger = setup_logging(__name__)
 
-    # 3. Use session_id to maintain state across page clicks
+OUTPUT_LINKS_FILE = DB_DIR / "siaran_pers_komdigi_links.json"
+
+
+async def main() -> None:
+    browser_config = BrowserConfig(headless=True, verbose=False)
     session_id = "komdigi_session"
-    all_links = []
-    
+    all_links: list[dict] = []
+
     async with AsyncWebCrawler(config=browser_config) as crawler:
         url = "https://www.komdigi.go.id/berita/siaran-pers"
         page_num = 1
         max_pages = 385
-        
+
         while page_num <= max_pages:
-            print(f"\n--- Scraping Page {page_num} ---")
-            
+            logger.info("--- Scraping Page %d ---", page_num)
+
             if page_num == 1:
-                # First page: simple navigation
                 config = CrawlerRunConfig(
-                    extraction_strategy=JsonCssExtractionStrategy(schema),
+                    extraction_strategy=JsonCssExtractionStrategy(KOMDIGI_LINKS_SCHEMA),
                     cache_mode=CacheMode.BYPASS,
                     session_id=session_id,
-                    wait_for="css:a.text-base.line-clamp-2"
+                    wait_for="css:a.text-base.line-clamp-2",
                 )
             else:
-                # Subsequent pages: Click 'Next' without reloading the URL
                 js_click_next = """
                 const svgNext = document.querySelector('svg.chevron-right_icon');
                 if (svgNext) {
@@ -63,49 +55,63 @@ async def main():
                     }
                 }
                 """
-                
                 config = CrawlerRunConfig(
-                    extraction_strategy=JsonCssExtractionStrategy(schema),
+                    extraction_strategy=JsonCssExtractionStrategy(KOMDIGI_LINKS_SCHEMA),
                     cache_mode=CacheMode.BYPASS,
                     session_id=session_id,
                     js_code=js_click_next,
-                    js_only=True, 
-                    wait_for="css:a.text-base.line-clamp-2"
+                    js_only=True,
+                    wait_for="css:a.text-base.line-clamp-2",
                 )
 
             result = await crawler.arun(url=url, config=config)
-
             if not result.success:
-                print(f"Failed to crawl page {page_num}: {result.error_message}")
+                logger.error("Failed page %d: %s", page_num, result.error_message)
                 break
 
-            # Extract links
             try:
-                links = json.loads(result.extracted_content)
-                if not links:
-                    print(f"No links found on page {page_num}. Ending.")
+                data = json.loads(result.extracted_content or "[]")
+                if not data:
+                    logger.warning("No links on page %d. Ending.", page_num)
                     break
-                
-                print(f"Found {len(links)} links on page {page_num}.")
-                all_links.extend(links)
-            except Exception as e:
-                print(f"Error parsing content on page {page_num}: {e}")
+                logger.info("Found %d items on page %d.", len(data), page_num)
+                all_links.extend(data)
+            except Exception as exc:
+                logger.error("Error parsing page %d: %s", page_num, exc)
                 break
 
-            # Check if this was the last page (Next button is disabled)
-            import re
-            if re.search(r'chevron-right_icon[^>]*text-netral-gray-03', result.html) or \
-               re.search(r'text-netral-gray-03[^>]*chevron-right_icon', result.html):
-                print("Reached the last page (Next button is disabled).")
+            if re.search(r"chevron-right_icon[^>]*text-netral-gray-03", result.html or "") or \
+               re.search(r"text-netral-gray-03[^>]*chevron-right_icon", result.html or ""):
+                logger.info("Reached last page (Next disabled).")
                 break
-            
-            page_num = int(all_links[-1]['page']) + 1
-            # Give some time for the page to settle if needed, though wait_for handles most
-            await asyncio.sleep(5)
 
-        print(f"\nScraping complete! Total links collected: {len(all_links)}")
-        with open('siaran_pers_komdigi_links.json', 'w', encoding='utf-8') as f:
-            json.dump(all_links, f, indent=2, ensure_ascii=False)
+            try:
+                page_num = int(all_links[-1].get("page", page_num)) + 1
+            except ValueError:
+                page_num += 1
+
+            await asyncio.sleep(3)
+
+    # -----------------------------------------------------------------------
+    # Deduplicate and flatten (fixes original bug in remove_duplicates script)
+    # -----------------------------------------------------------------------
+    flat_items: list[dict] = []
+    seen_links: set[str] = set()
+
+    for page_data in all_links:
+        items = page_data.get("news_items", [])
+        for item in items:
+            link = item.get("link", "")
+            if link and link not in seen_links:
+                seen_links.add(link)
+                flat_items.append(item)
+
+    logger.info("Scraping complete! Unique links collected: %d", len(flat_items))
+
+    OUTPUT_LINKS_FILE.write_text(
+        json.dumps(flat_items, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    logger.info("Saved to %s", OUTPUT_LINKS_FILE)
 
 
 if __name__ == "__main__":

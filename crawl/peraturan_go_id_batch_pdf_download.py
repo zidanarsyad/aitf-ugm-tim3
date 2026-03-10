@@ -1,80 +1,96 @@
+"""
+crawl/peraturan_go_id_batch_pdf_download.py
+Step 3: Download PDFs for all regulations that have a dokumen_url.
+
+Changes from original:
+- Reads PDF URLs from SQLite instead of JSON files
+- asyncio.Semaphore(10) replaces unbounded gather (prevents OOM)
+- Updates pdf_local_path column in SQLite after each download
+- Paths are cwd-independent via core/settings.py
+"""
+from __future__ import annotations
+
 import asyncio
-import json
-import os
+import logging
 from pathlib import Path
+
 import aiohttp
 
-# Base URL for downloads
-BASE_URL = "https://peraturan.go.id"
+from crawl.core.settings import PERATURAN_CONFIG, PDF_DOWNLOAD_DIR
+from crawl.core.database import get_db, get_regulations_pending_download, update_regulation_pdf
+from crawl.core.utils import setup_logging
 
-from config import PERATURAN_CONFIG, get_all_extracted_filename
+logger = setup_logging(__name__)
 
-# List of JSON files to process (generated dynamically from config)
-json_files = [get_all_extracted_filename(p) for p in PERATURAN_CONFIG.keys()]
+SEMAPHORE_LIMIT = 10  # Concurrent downloads
 
-# Output directory for PDFs
-DOWNLOAD_DIR = Path('pdf_downloads')
 
-async def download_file(session, url, file_path):
-    """Downloads a single PDF file asynchronously."""
-    if file_path.exists():
-        print(f"Skipping (already exists): {file_path.name}")
-        return
+async def download_pdf(
+    session: aiohttp.ClientSession,
+    semaphore: asyncio.Semaphore,
+    reg_id: int,
+    url: str,
+    dest_path: Path,
+) -> tuple[int, Path | None]:
+    """Download a single PDF. Returns (reg_id, local_path) or (reg_id, None) on failure."""
+    if dest_path.exists():
+        logger.debug("Skip (exists): %s", dest_path.name)
+        return reg_id, dest_path
 
-    try:
-        async with session.get(url) as response:
-            if response.status == 200:
-                content = await response.read()
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(file_path, 'wb') as f:
-                    f.write(content)
-                print(f"Downloaded: {file_path.name}")
-            else:
-                print(f"Failed to download {url}: Status {response.status}")
-    except Exception as e:
-        print(f"Error downloading {url}: {e}")
+    async with semaphore:
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                if resp.status != 200:
+                    logger.warning("HTTP %s for %s", resp.status, url)
+                    return reg_id, None
+                content = await resp.read()
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                dest_path.write_bytes(content)
+                logger.info("Downloaded: %s (%.1f KB)", dest_path.name, len(content) / 1024)
+                return reg_id, dest_path
+        except Exception as exc:
+            logger.error("Error downloading %s: %s", url, exc)
+            return reg_id, None
 
-async def main():
-    # 1. Create base download directory
-    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    async with aiohttp.ClientSession() as session:
+async def main(jenis_filter: str | None = None) -> None:
+    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+
+    async with get_db() as conn:
+        rows = await get_regulations_pending_download(conn, jenis_filter)
+        logger.info("PDFs pending download: %d", len(rows))
+
+        if not rows:
+            logger.info("Nothing to download.")
+            return
+
         tasks = []
-        for json_filename in json_files:
-            json_path = Path(json_filename)
-            if not json_path.exists():
-                print(f"Warning: {json_filename} not found.")
-                continue
+        for row in rows:
+            jenis = row["jenis"]
+            url = row["dokumen_url"]
+            filename = Path(url.split("?")[0]).name or f"reg_{row['id']}.pdf"
+            dest = PDF_DOWNLOAD_DIR / jenis / filename
 
-            print(f"Processing {json_filename}...")
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            async with aiohttp.ClientSession() as _session:
+                pass  # Just to validate syntax; real session below
+            tasks.append((row["id"], url, dest))
 
-            # Extract type from filename for subfolder organization (optional but good)
-            # e.g., 'uu', 'perpres', etc.
-            reg_type = json_filename.split('_')[-1].replace('.json', '')
-            reg_dir = DOWNLOAD_DIR / reg_type
-            reg_dir.mkdir(parents=True, exist_ok=True)
+        async with aiohttp.ClientSession() as session:
+            coros = [
+                download_pdf(session, semaphore, reg_id, url, dest)
+                for reg_id, url, dest in tasks
+            ]
+            results = await asyncio.gather(*coros)
 
-            for item in data:
-                relative_path = item.get('dokumen_peraturan')
-                if relative_path and relative_path.endswith('.pdf'):
-                    # Handle potential leading slash
-                    clean_path = relative_path.lstrip('/')
-                    download_url = f"{BASE_URL}/{clean_path}"
-                    
-                    filename = Path(clean_path).name
-                    file_path = reg_dir / filename
-                    
-                    tasks.append(download_file(session, download_url, file_path))
+        # Update DB
+        updated = 0
+        for reg_id, local_path in results:
+            if local_path:
+                await update_regulation_pdf(conn, reg_id, str(local_path))
+                updated += 1
 
-        if tasks:
-            print(f"Starting download of {len(tasks)} files...")
-            # Using semaphore to limit concurrency if needed, but for small sets it's fine
-            # For massive sets, use a semaphore or process in smaller chunks
-            await asyncio.gather(*tasks)
-        else:
-            print("No PDF links found to download.")
+        logger.info("Download complete. Updated %d/%d records.", updated, len(rows))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

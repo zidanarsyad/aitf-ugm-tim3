@@ -214,3 +214,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PDF downloads
+pdf_downloads/
+pdf_downloads.zip

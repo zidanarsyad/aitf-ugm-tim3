@@ -1,120 +1,101 @@
+"""
+crawl/siaran_pers_komdigi.py
+Scrape full content from Komdigi using deduplicated links.
+
+Changes from original:
+- Reads input links from DB_DIR
+- Writes directly to SQLite instead of JSON file
+- Concurrency bounded via Semaphore
+- Imported schemas from core
+"""
+from __future__ import annotations
+
 import asyncio
 import json
-import os
-import sys
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 
-# Ensure UTF-8 output for Windows console
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8')
+from crawl.core.settings import DB_DIR
+from crawl.core.schemas import KOMDIGI_DETAIL_SCHEMA
+from crawl.core.database import get_db, upsert_siaran_pers
+from crawl.core.utils import setup_logging, ensure_absolute_url
 
-async def main():
-    # 1. Load links from the previously generated JSON
-    links_file = r'siaran_pers_komdigi_links.json'
-    
-    if not os.path.exists(links_file):
-        print(f"Error: {links_file} not found.")
+logger = setup_logging(__name__)
+
+INPUT_LINKS_FILE = DB_DIR / "siaran_pers_komdigi_links.json"
+BASE_URL = "https://www.komdigi.go.id"
+MAX_CONCURRENT = 3
+
+
+async def crawl_item(
+    crawler: AsyncWebCrawler,
+    semaphore: asyncio.Semaphore,
+    item: dict,
+    idx: int,
+    total: int,
+) -> dict | None:
+    async with semaphore:
+        url = ensure_absolute_url(item["link"], BASE_URL)
+        logger.info("[Komdigi] [%d/%d] Crawling: %s", idx, total, url)
+
+        run_config = CrawlerRunConfig(
+            extraction_strategy=JsonCssExtractionStrategy(KOMDIGI_DETAIL_SCHEMA),
+            cache_mode=CacheMode.BYPASS,
+            wait_for="css:section#section_text_body",
+        )
+
+        try:
+            result = await crawler.arun(url=url, config=run_config)
+            if not result.success:
+                logger.error("[Komdigi] Failed %s: %s", url, result.error_message)
+                return None
+
+            data = json.loads(result.extracted_content or "[]")
+            detail = data[0] if isinstance(data, list) and data else (data if data else {})
+
+            return {
+                "title":   item["title"],
+                "link":    url,
+                "source":  "Komdigi",
+                "date":    str(detail.get("date", "")).strip(),
+                "content": str(detail.get("text", "")).strip(),
+            }
+        except Exception as exc:
+            logger.error("[Komdigi] Error processing %s: %s", url, exc)
+            return None
+        finally:
+            await asyncio.sleep(0.5)
+
+
+async def main() -> None:
+    if not INPUT_LINKS_FILE.exists():
+        logger.error("Links file not found: %s", INPUT_LINKS_FILE)
         return
 
-    with open(links_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    
-    # Flatten news items from all pages in the JSON
-    news_items = []
-    for page in data:
-        items = page.get('news_items', [])
-        news_items.extend(items)
-    
-    print(f"Total items to crawl: {len(news_items)}")
-    
-    # Base URL for Komdigi
-    base_url = "https://www.komdigi.go.id"
-    
-    # 2. Define extraction schema for detail pages
-    schema = {
-        "name": "Siaran Pers Detail",
-        "baseSelector": "body",
-        "fields": [
-            {
-                "name": "date",
-                "selector": "section.flex.mt-5 div.flex-wrap span.text-body-l:not([style])",
-                "type": "text"
-            },
-            {
-                "name": "text",
-                "selector": "section#section_text_body",
-                "type": "text"
-            }
-        ]
-    }
-    
-    extraction_strategy = JsonCssExtractionStrategy(schema)
-    
-    # 3. Configure Browser and Crawler
-    browser_config = BrowserConfig(headless=True)
-    run_config = CrawlerRunConfig(
-        extraction_strategy=extraction_strategy,
-        cache_mode=CacheMode.BYPASS,
-        wait_for="css:section#section_text_body"
-    )
-    
-    results = []
-    
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        # We'll use a semaphore to limit concurrency and avoid being blocked
-        # Using a conservative number for reliability
-        max_concurrent = 3
-        semaphore = asyncio.Semaphore(max_concurrent)
-        
-        async def crawl_item(item, index):
-            async with semaphore:
-                # Ensure the link starts with /
-                link = item['link']
-                if not link.startswith('/'):
-                    link = '/' + link
-                
-                url = base_url + link
-                print(f"[{index+1}/{len(news_items)}] Crawling: {url}")
-                
-                try:
-                    result = await crawler.arun(url=url, config=run_config)
-                    
-                    if result.success:
-                        extracted_data = json.loads(result.extracted_content)
-                        
-                        # Handle cases where multiple items might be matched by baseSelector
-                        if isinstance(extracted_data, list) and len(extracted_data) > 0:
-                            detail = extracted_data[0]
-                        else:
-                            detail = extracted_data if extracted_data else {}
-                        
-                        results.append({
-                            "title": item['title'],
-                            "link": item['link'],
-                            "date": str(detail.get('date', '')).strip(),
-                            "text": str(detail.get('text', '')).strip()
-                        })
-                    else:
-                        print(f"Failed to crawl {url}: {result.error_message}")
-                except Exception as e:
-                    print(f"Error processing {url}: {e}")
-                
-                # Small delay to be polite
-                await asyncio.sleep(0.5)
+    news_items = json.loads(INPUT_LINKS_FILE.read_text(encoding="utf-8"))
+    total = len(news_items)
+    logger.info("Total items to crawl: %d", total)
 
-        # Process items
-        tasks = [crawl_item(item, i) for i, item in enumerate(news_items)]
-        await asyncio.gather(*tasks)
-    
-    # 4. Save the results
-    output_file = r'siaran_pers_komdigi_all.json'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-    
-    print(f"\nScraping complete!")
-    print(f"Total results collected: {len(results)}")
-    print(f"Results saved to: {output_file}")
+    browser_config = BrowserConfig(headless=True)
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        tasks = [
+            crawl_item(crawler, semaphore, item, i + 1, total)
+            for i, item in enumerate(news_items)
+        ]
+        results = await asyncio.gather(*tasks)
+
+        valid = [r for r in results if r]
+
+    if valid:
+        async with get_db() as conn:
+            count = await upsert_siaran_pers(conn, valid)
+            logger.info("Upserted %d Komdigi articles to DB", count)
+    else:
+        logger.warning("No valid articles extracted.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
