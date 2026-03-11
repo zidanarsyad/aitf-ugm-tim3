@@ -24,11 +24,12 @@ A high-performance web scraping suite designed for extracting Indonesian legal r
 
 - [🚀 Key Features](#-key-features)
 - [🛠️ Installation](#️-installation)
-- [� Interactive Dashboard (Recommended)](#-interactive-dashboard-recommended)
-- [�📖 CLI Usage Guide](#-cli-usage-guide)
+- [ Interactive Dashboard (Recommended)](#-interactive-dashboard-recommended)
+- [📖 CLI Usage Guide](#-cli-usage-guide)
   - [1. Peraturan.go.id (Regulations)](#1-peraturangoid-regulations)
   - [2. General News (BAPPENAS, BGN, ESDM)](#2-general-news-bappenas-bgn-esdm)
   - [3. Komdigi.go.id (News)](#3-komdigigoid-news)
+- [🌐 API Server](#-api-server)
 - [📂 Directory Structure](#-directory-structure)
 - [📦 Data Schema](#-data-schema)
 - [🛡️ License](#️-license)
@@ -159,10 +160,30 @@ python crawl/siaran_pers_komdigi.py
 
 ---
 
+## 🌐 API Server
+
+The project includes a mock API server built with FastAPI implementing the communication strategy AI refinement endpoints.
+
+```bash
+# Start the API server locally
+uvicorn api.main:app --reload
+```
+
+**Key API Features:**
+
+- **Authentication**: Bearer token logic.
+- **Model Listing**: `GET /v1/models`
+- **Chat Completions**: `POST /v1/chat/completions` (Supports SSE streaming with `stream: true`).
+- **Crawler Monitoring**: `GET /v1/crawlers/status`
+
+---
+
 ## 📂 Directory Structure
 
 ```text
 .
+├── api/              # API Server
+│   ├── main.py              # FastAPI application
 ├── crawl/            # Python scraping scripts & UI
 │   ├── app_crawl.py         # Streamlit Dashboard
 │   ├── config.py            # Regulation config
