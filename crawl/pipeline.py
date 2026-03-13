@@ -29,46 +29,44 @@ def main():
     print("Starting AITF UGM Tim 3 Scraping Pipeline...")
     
     # Define Pipelines
+    # Define Pipelines
     pipelines = {
         "1": {
             "name": "Regulation Pipeline (peraturan.go.id)",
             "scripts": [
                 "peraturan_go_id_rekapitulasi.py",
                 "peraturan_go_id_all.py",
-                "peraturan_go_id_batch_pdf_download.py",
-                "peraturan_go_id_pdf_metadata.py"
+                "peraturan_go_id_perda_links.py",
+                "peraturan_go_id_perda.py",
+                "peraturan_go_id_pdf_metadata.py",
+                "peraturan_go_id_batch_pdf_download.py"
             ]
         },
         "2": {
-            "name": "Komdigi News Pipeline",
+            "name": "Siaran Pers Pipeline (Komdigi + General + Cleaning)",
             "scripts": [
                 "siaran_pers_komdigi_links.py",
                 "siaran_pers_komdigi_remove_duplicates.py",
-                "siaran_pers_komdigi.py"
+                "siaran_pers_komdigi.py",
+                "siaran_pers_general_links.py",
+                "siaran_pers_general.py",
+                "siaran_pers_cleaning.py"
             ]
         },
         "3": {
-            "name": "General News Pipeline (BAPPENAS, BGN, ESDM)",
+            "name": "Wikipedia Pipeline",
             "scripts": [
-                "siaran_pers_general_links.py",
-                "siaran_pers_general.py"
-            ]
-        },
-        "4": {
-            "name": "Perda Pipeline (peraturan.go.id/perda)",
-            "scripts": [
-                "peraturan_go_id_perda_links.py",
-                "peraturan_go_id_perda.py"
+                "wikipedia_links.py",
+                "wikipedia.py"
             ]
         }
     }
 
     print("\nSelect Pipeline to run:")
-    print("1. Regulation Pipeline (Rekap -> Scrape -> Download PDF -> Metadata)")
-    print("2. Komdigi News Pipeline (Links -> Clean -> Scrape Content)")
-    print("3. General News Pipeline (Links -> Scrape Content)")
-    print("4. Perda Pipeline (Links -> Scrape Content)")
-    print("5. Run ALL")
+    print("1. Regulation Pipeline (peraturan.go.id)")
+    print("2. Siaran Pers Pipeline (Komdigi + General + Cleaning)")
+    print("3. Wikipedia Pipeline")
+    print("4. Run ALL (1 -> 2 -> 3)")
     print("Q. Quit")
 
     choice = input("\nEnter choice: ").strip().lower()
@@ -81,9 +79,11 @@ def main():
     elif choice == '3':
         selected_scripts = pipelines["3"]["scripts"]
     elif choice == '4':
-        selected_scripts = pipelines["4"]["scripts"]
-    elif choice == '5':
-        selected_scripts = pipelines["1"]["scripts"] + pipelines["2"]["scripts"] + pipelines["3"]["scripts"] + pipelines["4"]["scripts"]
+        selected_scripts = (
+            pipelines["1"]["scripts"] + 
+            pipelines["2"]["scripts"] + 
+            pipelines["3"]["scripts"]
+        )
     elif choice == 'q':
         return
     else:
