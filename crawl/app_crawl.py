@@ -236,6 +236,7 @@ with tab0:
         # 2. Press Release Stats
         news_file = db_dir / "siaran_pers_general.json"
         komdigi_file = db_dir / "siaran_pers_komdigi_all.json"
+        wikipedia_file = db_dir / "wikipedia.json"
         total_news = 0
         news_by_source = {}
         
@@ -257,6 +258,15 @@ with tab0:
                     data = json.load(j)
                     total_news += len(data)
                     news_by_source['KOMDIGI'] = len(data)
+            except: pass
+
+        # Wikipedia
+        if wikipedia_file.exists():
+            try:
+                with open(wikipedia_file, 'r', encoding='utf-8') as j:
+                    data = json.load(j)
+                    total_news += len(data)
+                    news_by_source['WIKIPEDIA'] = len(data)
             except: pass
             
         m_col4.metric("Press Releases", f"{total_news:,}")
@@ -471,7 +481,8 @@ with tab2:
     
     with col_l:
         st.subheader("Step 1: Scrape Links")
-        max_pages = st.number_input("Max Pages per Site", 1, 300, 1)
+        start_page = st.number_input("Start Page", 1, 1000, 1)
+        max_pages = st.number_input("Max Pages per Site", 1, 300, 5)
         
         if st.button("Crawl Link List"):
             from siaran_pers_general_links import GeneralLinksScraper
@@ -480,7 +491,7 @@ with tab2:
                 browser_config = BrowserConfig(headless=True)
                 async with AsyncWebCrawler(config=browser_config) as crawler:
                     scraper = GeneralLinksScraper(crawler)
-                    # Temporarily override config max_pages
+                    # Temporarily override config max_pages for the scraper loop
                     SCRAPER_CONFIG["max_pages"] = max_pages
                     
                     # Load existing links to avoid duplicates
@@ -498,7 +509,7 @@ with tab2:
                         if site_name in GENERAL_SITES_CONFIG:
                             site_config = GENERAL_SITES_CONFIG[site_name]
                             st.write(f"Processing {site_name}...")
-                            site_links = await scraper.scrape_site_links(site_name, site_config, existing_links_set)
+                            site_links = await scraper.scrape_site_links(site_name, site_config, existing_links_set, start_page=start_page)
                             new_results.extend(site_links)
                     
                     # Merge and save

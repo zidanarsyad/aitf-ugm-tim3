@@ -22,18 +22,18 @@ class GeneralLinksScraper:
     def __init__(self, crawler):
         self.crawler = crawler
 
-    async def scrape_site_links(self, site_name: str, site_config: dict, existing_links_set: set):
+    async def scrape_site_links(self, site_name: str, site_config: dict, existing_links_set: set, start_page: int = 1):
         links_config = site_config["links"]
         url_template = links_config["url_template"]
         schema = links_config["schema"]
         
         new_links = []
-        page_num = 1
+        page_num = start_page
         consecutive_empty = 0
         
         logger.info(f"--- Starting updatable link crawl for {site_name} ---")
         
-        while page_num <= SCRAPER_CONFIG["max_pages"]:
+        while page_num < start_page + SCRAPER_CONFIG["max_pages"]:
             url = url_template.format(page=page_num)
             logger.info(f"[{site_name}] Crawling page {page_num}: {url}")
             

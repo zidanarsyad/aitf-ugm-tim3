@@ -9,10 +9,11 @@ from crawl4ai import AsyncWebCrawler
 BASE_URL = "https://id.wikipedia.org"
 START_CATEGORY = "/wiki/Kategori:Pemerintahan_Indonesia"
 
-MAX_DEPTH = 1
+MAX_DEPTH = 2
 
 visited_categories = set()
 article_links = set()
+session_scanned = set() # To track categories crawled in the current run
 
 
 INVALID_PREFIX = (
@@ -106,13 +107,24 @@ async def crawl_batch(crawler, category_paths, depth):
     if depth > MAX_DEPTH or not category_paths:
         return
 
-    # Filter out already visited
-    to_crawl = [path for path in category_paths if path not in visited_categories]
+    # Filter categories to crawl
+    to_crawl = []
+    for path in category_paths:
+        if path in session_scanned:
+            continue
+        
+        # We crawl if:
+        # 1. It's never been visited before
+        # 2. OR we are at a depth where we need to find its children (resuming/going deeper)
+        if path not in visited_categories or depth < MAX_DEPTH:
+            to_crawl.append(path)
+
     if not to_crawl:
         return
 
-    # Mark as visited before crawling to prevent duplicates in parallel tasks
+    # Mark as scanned in this session and add to visited
     for path in to_crawl:
+        session_scanned.add(path)
         visited_categories.add(path)
 
     urls = [urljoin(BASE_URL, path) for path in to_crawl]
@@ -139,16 +151,13 @@ async def crawl_batch(crawler, category_paths, depth):
             all_next_subs.update(subs)
             all_pagination.update(pagination)
 
-        # 1. Process pagination in current depth (remaining pages of these categories)
-        # Filter pagination to avoid cycles or re-visiting
-        pagination_to_crawl = [p for p in all_pagination if p not in visited_categories]
-        if pagination_to_crawl:
-            await crawl_batch(crawler, pagination_to_crawl, depth)
+        # 1. Process pagination in current depth
+        if all_pagination:
+            await crawl_batch(crawler, list(all_pagination), depth)
 
         # 2. Process subcategories in next depth
-        subs_to_crawl = [s for s in all_next_subs if s not in visited_categories]
-        if subs_to_crawl:
-            await crawl_batch(crawler, subs_to_crawl, depth + 1)
+        if all_next_subs:
+            await crawl_batch(crawler, list(all_next_subs), depth + 1)
 
     except Exception as e:
         print(f"Error in batch crawl: {e}")

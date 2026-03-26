@@ -369,7 +369,73 @@ GENERAL_SITES_CONFIG = {
             },
             "wait_for": "div.def-page.article"
         }
-    }
+    },
+    "WAPRES": {
+        "links": {
+            "url_template": "https://www.wapresri.go.id/press-release/page/{page}/",
+            "schema": {
+                "name": "WAPRES_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "span.page-numbers.current", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.post.type-post",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h3.title.page-title", "type": "text"},
+                            {"name": "link", "selector": "h3.title.page-title a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.post.type-post",
+        },
+        "detail": {
+            "schema": {
+                "name": "WAPRES_DETAIL",
+                "baseSelector": "div.content",
+                "fields": [
+                    {"name": "date", "selector": "div.post-article span.post-meta-date", "type": "text"},
+                    {"name": "text", "selector": "div.post-article", "type": "text"},
+                ],
+            },
+            "wait_for": "div.content",
+        },
+    },
+    "PMK": {
+        "links": {
+            "url_template": "https://www.kemenkopmk.go.id/index.php/kolom/berita?page={page}",
+            "schema": {
+                "name": "PMK_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "nav.pager ul li.is-active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.item-post",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "div.post-title span", "type": "text"},
+                            {"name": "link", "selector": "div.post-title a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.item-post",
+        },
+        "detail": {
+            "schema": {
+                "name": "PMK_DETAIL",
+                "baseSelector": "div.article-detail div.block",
+                "fields": [
+                    {"name": "date", "selector": "span.post-created", "type": "text"},
+                    {"name": "text", "selector": "div.post-content div.field", "type": "text"},
+                ],
+            },
+            "wait_for": "span.post-created",
+        },
+    },
 }
 
 SCRAPER_CONFIG = {

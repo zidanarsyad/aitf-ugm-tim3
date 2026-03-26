@@ -1,0 +1,3 @@
+CREATE TABLE "pages" ( "url" TEXT NOT NULL, "judul" TEXT, "jenis" TEXT, "pemrakarsa" TEXT, "nomor" INTEGER, "tahun" INTEGER, "tentang" TEXT, "tempat_penetapan" TEXT, "ditetapkan_tanggal" TEXT, "pejabat_yang_menetapkan" TEXT, "status" TEXT, "dokumen_peraturan" TEXT, CONSTRAINT "url" FOREIGN KEY("url") REFERENCES "urls"("url") );
+CREATE TABLE "urls" ( "url" TEXT NOT NULL UNIQUE, "peraturan" TEXT, "status" INTEGER DEFAULT 0, "date_created" TEXT, "date_modified" TEXT, CONSTRAINT "PK_url" PRIMARY KEY("url") );
+CREATE UNIQUE INDEX "IFK_pages_url" ON "urls" ( "url" );

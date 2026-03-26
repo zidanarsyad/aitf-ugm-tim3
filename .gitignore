@@ -214,3 +214,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+db/peraturan.db
+db/siaran_pers.db
+db/siaran_pers_general.json
+db/siaran_pers_general.json
+db/wikipedia.json
+db/wikipedia_checkpoint.json
+db/wikipedia_links_checkpoint.json
+db/siaran_pers_general.json
