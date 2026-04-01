@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import sys
+import re
 from urllib.parse import urljoin
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
@@ -100,9 +101,20 @@ class GeneralLinksScraper:
     def _process_items(self, items, base_url, source_name, page_num):
         """Cleans and annotates each news item."""
         for item in items:
-            link = item.get("link", "")
-            if link and not link.startswith("http"):
-                item["link"] = urljoin(base_url, link)
+            raw = item.get("link", "")
+
+            # Extract URL from onclick JS
+            match = re.search(r"window\.location\.href='([^']+)'", raw)
+            if match:
+                cleaned = match.group(1)
+            else:
+                cleaned = raw
+
+            # Normalize relative URL
+            if cleaned and not cleaned.startswith("http"):
+                cleaned = urljoin(base_url, cleaned)
+
+            item["link"] = cleaned
             item["source"] = source_name
             item["scraped_at_page"] = page_num
         return items

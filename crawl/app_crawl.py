@@ -481,8 +481,8 @@ with tab2:
     
     with col_l:
         st.subheader("Step 1: Scrape Links")
-        start_page = st.number_input("Start Page", 1, 1000, 1)
-        max_pages = st.number_input("Max Pages per Site", 1, 300, 5)
+        start_page = st.number_input("Start Page", 0, 3000, 1)
+        max_pages = st.number_input("Max Pages per Site", 1, 3000, 5)
         
         if st.button("Crawl Link List"):
             from siaran_pers_general_links import GeneralLinksScraper

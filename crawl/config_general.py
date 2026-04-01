@@ -436,14 +436,212 @@ GENERAL_SITES_CONFIG = {
             "wait_for": "span.post-created",
         },
     },
+    "SETNEG_PERS": {
+        "links": {
+            "url_template": "https://www.setneg.go.id/listcontent/listberita/siaran_pers_kemensetneg/{page}0",
+            "schema": {
+                "name": "SETNEG_PERS_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "div.page-content nav ul li.active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.page-content div.media",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h4.media-heading a", "type": "text"},
+                            {"name": "link", "selector": "h4.media-heading a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.media",
+        },
+        "detail": {
+            "schema": {
+                "name": "SETNEG_PERS_DETAIL",
+                "baseSelector": "div.article-content",
+                "fields": [
+                    {"name": "date", "selector": "p.widget-metas", "type": "text"},
+                    {"name": "text", "selector": "div.my-content-text", "type": "text"},
+                ],
+            },
+            "wait_for": "div.my-content-text",
+        },
+    },
+    "SETNEG_BERITA": {
+        "links": {
+            "url_template": "https://www.setneg.go.id/listcontent/listberita/berita_kemensetneg/{page}0",
+            "schema": {
+                "name": "SETNEG_BERITA_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "div.page-content nav ul li.active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.page-content div.media",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h4.media-heading a", "type": "text"},
+                            {"name": "link", "selector": "h4.media-heading a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.media",
+        },
+        "detail": {
+            "schema": {
+                "name": "SETNEG_BERITA_DETAIL",
+                "baseSelector": "div.article-content",
+                "fields": [
+                    {"name": "date", "selector": "p.widget-metas", "type": "text"},
+                    {"name": "text", "selector": "div.my-content-text", "type": "text"},
+                ],
+            },
+            "wait_for": "div.my-content-text",
+        },
+    },
+    "SETNEG_PRESIDEN": {
+        "links": {
+            "url_template": "https://www.setneg.go.id/listcontent/listberita/berita_presiden_dan_pemerintah/{page}0",
+            "schema": {
+                "name": "SETNEG_PRESIDEN_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "div.page-content nav ul li.active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.page-content div.media",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h4.media-heading a", "type": "text"},
+                            {"name": "link", "selector": "h4.media-heading a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.media",
+        },
+        "detail": {
+            "schema": {
+                "name": "SETNEG_PRESIDEN_DETAIL",
+                "baseSelector": "div.article-content",
+                "fields": [
+                    {"name": "date", "selector": "p.widget-metas", "type": "text"},
+                    {"name": "text", "selector": "div.my-content-text", "type": "text"},
+                ],
+            },
+            "wait_for": "div.my-content-text",
+        },
+    },
+    "SETNEG_WAPRES": {
+        "links": {
+            "url_template": "https://www.setneg.go.id/listcontent/listberita/berita_wakil_presiden/{page}0",
+            "schema": {
+                "name": "SETNEG_WAPRES_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "div.page-content nav ul li.active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.page-content div.media",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h4.media-heading a", "type": "text"},
+                            {"name": "link", "selector": "h4.media-heading a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.media",
+        },
+        "detail": {
+            "schema": {
+                "name": "SETNEG_WAPRES_DETAIL",
+                "baseSelector": "div.article-content",
+                "fields": [
+                    {"name": "date", "selector": "p.widget-metas", "type": "text"},
+                    {"name": "text", "selector": "div.my-content-text", "type": "text"},
+                ],
+            },
+            "wait_for": "div.my-content-text",
+        },
+    },
+    "SETNEG_PIDATO": {
+        "links": {
+            "url_template": "https://www.setneg.go.id/listcontent/listberita/pidato_presiden/{page}0",
+            "schema": {
+                "name": "SETNEG_PIDATO_LINKS",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "page", "selector": "div.page-content nav ul li.active", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.page-content div.media",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h4.media-heading a", "type": "text"},
+                            {"name": "link", "selector": "h4.media-heading a", "type": "attribute", "attribute": "href"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.media",
+        },
+        "detail": {
+            "schema": {
+                "name": "SETNEG_PIDATO_DETAIL",
+                "baseSelector": "div.article-content",
+                "fields": [
+                    {"name": "date", "selector": "p.widget-metas", "type": "text"},
+                    {"name": "text", "selector": "section", "type": "text"},
+                ],
+            },
+            "wait_for": "p.widget-metas",
+        },
+    },
+    "MPR": {
+        "links": {
+            "url_template": "https://www.mpr.go.id/berita?page={page}",
+            "schema": {
+                "name": "MPR_LINKS",
+                "baseSelector": "div.pimpinan-layout",
+                "fields": [
+                    {"name": "page", "selector": "span.page-info strong", "type": "text"},
+                    {
+                        "name": "news_items",
+                        "selector": "div.news-item",
+                        "type": "list",
+                        "fields": [
+                            {"name": "title", "selector": "h3", "type": "text"},
+                            {"name": "link", "type": "attribute", "attribute": "onclick"},
+                        ],
+                    },
+                ],
+            },
+            "wait_for": "div.news-item",
+        },
+        "detail": {
+            "schema": {
+                "name": "MPR_DETAIL",
+                "baseSelector": "body",
+                "fields": [
+                    {"name": "date", "selector": "div.banner-meta", "type": "text"},
+                    {"name": "text", "selector": "div.detail-card", "type": "text"},
+                ],
+            },
+            "wait_for": "div.detail-card",
+        },
+    },
 }
 
 SCRAPER_CONFIG = {
-    "max_pages": 300,
-    "max_consecutive_empty": 5,
-    "concurrency_limit": 5,
+    "max_pages": 3000,
+    "max_consecutive_empty": 10,
+    "concurrency_limit": 10,
     "polite_delay": 0.5,    
-    "wait_timeout": 30000
+    "wait_timeout": 10000
 }
 
 OUTPUT_LINKS_FILE = str(DB_ROOT / "siaran_pers_general_links.json")

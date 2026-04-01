@@ -9,7 +9,7 @@ from crawl4ai import AsyncWebCrawler
 BASE_URL = "https://id.wikipedia.org"
 START_CATEGORY = "/wiki/Kategori:Pemerintahan_Indonesia"
 
-MAX_DEPTH = 2
+MAX_DEPTH = 3
 
 visited_categories = set()
 article_links = set()
