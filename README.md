@@ -11,12 +11,14 @@ A high-performance web scraping suite designed for extracting Indonesian legal r
 
 ### 🔍 Sources Covered:
 
-- **Regulations**: `peraturan.go.id` (UU, Perpres, Perppu, Penpres, Keppres, Inpres, Perda, Permen, etc.)
-- **News/Press Releases**:
-  - `komdigi.go.id`
-  - `bappenas.go.id`
-  - `bgn.go.id`
-  - `esdm.go.id`
+- **Regulations**: `peraturan.go.id` (UU, Perpres, Perppu, Penpres, Keppres, Inpres, Perda, Permen, dll.)
+- **Press Releases / News**: 20+ Ministries & Government Agencies including `dpr.go.id`, `komdigi.go.id`, `bappenas.go.id`, `esdm.go.id`, `kemensos.go.id`, `polri.go.id`, `setneg.go.id`, `bumn.go.id`, etc.
+- **Context/Knowledge Base**: Wikipedia Indonesia (General government contexts)
+
+### 📊 Dataset Links (Kaggle):
+
+- [AITF - Peraturan Pemerintah](https://www.kaggle.com/datasets/ahmadadillaumam/aitf-peraturan-pemerintah)
+- [AITF - Siaran Pers Pemerintah](https://www.kaggle.com/datasets/ahmadadillaumam/aitf-siaran-pers-pemerintah)
 
 ---
 
@@ -26,9 +28,9 @@ A high-performance web scraping suite designed for extracting Indonesian legal r
 - [🛠️ Installation](#️-installation)
 - [ Interactive Dashboard (Recommended)](#-interactive-dashboard-recommended)
 - [📖 CLI Usage Guide](#-cli-usage-guide)
-  - [1. Peraturan.go.id (Regulations)](#1-peraturangoid-regulations)
-  - [2. General News (BAPPENAS, BGN, ESDM)](#2-general-news-bappenas-bgn-esdm)
-  - [3. Komdigi.go.id (News)](#3-komdigigoid-news)
+  - [1. Regulation Pipeline](#1-regulation-pipeline-peraturangoid)
+  - [2. Siaran Pers Pipeline](#2-siaran-pers-pipeline-komdigi--general--dpr--cleaning)
+  - [3. Wikipedia Pipeline](#3-wikipedia-pipeline)
 - [🌐 API Server](#-api-server)
 - [📂 Directory Structure](#-directory-structure)
 - [📦 Data Schema](#-data-schema)
@@ -98,65 +100,41 @@ streamlit run crawl/app_crawl.py
 
 ## 📖 CLI Usage Guide
 
-### 1. Peraturan.go.id (Regulations)
-
-#### **Step A: Generate Rekapitulasi**
-
-Gather metadata and counts of regulations per year.
+The project provides an interactive pipeline orchestrator. Simply run:
 
 ```bash
-python crawl/peraturan_go_id_rekapitulasi.py
+python crawl/pipeline.py
+# Or on Windows:
+crawl\run_pipeline.bat
 ```
 
-#### **Step B: Scrape Detailed Data**
+You will be presented with a menu to run one of the following pipelines:
 
-Use rekapitulasi data to crawl individual regulation pages.
+### 1. Regulation Pipeline (`peraturan.go.id`)
 
-```bash
-python crawl/peraturan_go_id_all.py
-```
-
-#### **Step C: Download PDFs & Extract Metadata**
-
-Download documents and enrich JSON with PDF metadata.
-
-```bash
-python crawl/peraturan_go_id_batch_pdf_download.py
-python crawl/peraturan_go_id_pdf_metadata.py
-```
+Handles extraction of all Indonesian legal documents.
+- `peraturan_go_id_rekapitulasi.py` - Gather metadata/counts per year.
+- `peraturan_go_id_all.py` - Crawl details for general regulations.
+- `peraturan_go_id_perda_links.py` & `peraturan_go_id_perda.py` - Scrape local regulations (Perda).
+- `peraturan_go_id_pdf_metadata.py` & `peraturan_go_id_batch_pdf_download.py` - Download PDFs and enrich metadata.
 
 ---
 
-### 2. General News (BAPPENAS, BGN, ESDM)
+### 2. Siaran Pers Pipeline (Komdigi + General + DPR + Cleaning)
 
-#### **Step A: Crawl Links**
-
-```bash
-python crawl/siaran_pers_general_links.py
-```
-
-#### **Step B: Crawl Content**
-
-```bash
-python crawl/siaran_pers_general.py
-```
+Extracts news and press releases from over 20 government agency portals, then cleans the collected data.
+- `siaran_pers_komdigi_links.py` & `siaran_pers_komdigi.py` - Scrape Komdigi.
+- `siaran_pers_general_links.py` & `siaran_pers_general.py` - Scrape general ministries (BAPPENAS, ESDM, SETNEG, etc.).
+- `siaran_pers_cleaning.py` - Cleans and standardizes the final dataset format.
+> **Note**: DPR RI news scraping (`siaran_pers_dpr.py`) can be executed individually if needed.
 
 ---
 
-### 3. Komdigi.go.id (News)
+### 3. Wikipedia Pipeline
 
-#### **Step A: Extract Links & Remove Duplicates**
-
-```bash
-python crawl/siaran_pers_komdigi_links.py
-python crawl/siaran_pers_komdigi_remove_duplicates.py
-```
-
-#### **Step B: Scrape Content**
-
-```bash
-python crawl/siaran_pers_komdigi.py
-```
+Gathers contextual knowledge base from Wikipedia Indonesia.
+- `wikipedia_links.py` - Discover relevant links.
+- `wikipedia.py` - Scrape Wikipedia content.
 
 ---
 
