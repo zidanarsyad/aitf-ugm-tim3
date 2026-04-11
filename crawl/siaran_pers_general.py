@@ -20,6 +20,8 @@ class GeneralContentScraper:
     def __init__(self, crawler):
         self.crawler = crawler
         self.semaphore = asyncio.Semaphore(SCRAPER_CONFIG["concurrency_limit"])
+        self.success_count = 0
+        self.failed_count = 0
 
     def clean_date(self, date_str: str, source_name: str) -> str:
         """Cleans source-specific date formatting."""
@@ -52,12 +54,15 @@ class GeneralContentScraper:
                 result = await self.crawler.arun(url=url, config=run_config)
                 
                 if not result.success:
-                    logger.error(f"[{source_name}] Failed: {url} - {result.error_message}")
+                    self.failed_count += 1
+                    logger.error(f"[{source_name}] Failed: {result.url} | Progress: {index+1}/{total} | Success: {self.success_count} | Failed: {self.failed_count}")
                     return None
                 
                 data = json.loads(result.extracted_content)
                 detail = data[0] if isinstance(data, list) and data else (data if data else {})
                 
+                self.success_count += 1
+                logger.info(f"[{source_name}] Success: {item['title'][:50]}... | Progress: {index+1}/{total} | Success: {self.success_count} | Failed: {self.failed_count}")
                 return {
                     "title": item['title'],
                     "link": item['link'],
@@ -66,7 +71,8 @@ class GeneralContentScraper:
                     "text": str(detail.get('text', '')).strip()
                 }
             except Exception as e:
-                logger.error(f"[{source_name}] Error processing {url}: {e}")
+                self.failed_count += 1
+                logger.error(f"[{source_name}] Error processing {url}: {e} | Progress: {index+1}/{total} | Success: {self.success_count} | Failed: {self.failed_count}")
                 return None
             finally:
                 await asyncio.sleep(SCRAPER_CONFIG["polite_delay"])

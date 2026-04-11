@@ -17,10 +17,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class DPRScraper:
-    def __init__(self, crawler):
+    def __init__(self, crawler, total_to_scrape: int):
         self.crawler = crawler
         self.semaphore = asyncio.Semaphore(SCRAPER_CONFIG["concurrency_limit"])
         self.source_name = "DPR"
+        self.total_to_scrape = total_to_scrape
+        self.success_count = 0
+        self.failed_count = 0
+        self.processed_count = 0
         self.schema = {
             "name": "DPR_DETAIL",
             "baseSelector": "body",
@@ -46,11 +50,15 @@ class DPRScraper:
             try:
                 result = await self.crawler.arun(url=url, config=run_config)
                 
+                self.processed_count += 1
+                progress = f"{self.processed_count}/{self.total_to_scrape}"
+                
                 if not result.success:
+                    self.failed_count += 1
                     if "404" in result.error_message or "status: 404" in result.error_message.lower():
-                        logger.warning(f"[{self.source_name}] ID {item_id} Not Found (404)")
+                        logger.warning(f"[{self.source_name}] ID {item_id} Not Found (404) | Progress: {progress} | Success: {self.success_count} | Failed: {self.failed_count}")
                         return {"id": item_id, "status": "not_found"}
-                    logger.error(f"[{self.source_name}] ID {item_id} Failed: {result.error_message}")
+                    logger.error(f"[{self.source_name}] ID {item_id} Failed: {result.url} | Progress: {progress} | Success: {self.success_count} | Failed: {self.failed_count}")
                     return None
                 
                 data = json.loads(result.extracted_content)
@@ -61,9 +69,11 @@ class DPRScraper:
                 date = str(detail.get('date', '')).strip()
                 
                 if not title or not text:
-                    logger.warning(f"[{self.source_name}] ID {item_id} Empty or invalid content")
+                    self.failed_count += 1
+                    logger.warning(f"[{self.source_name}] ID {item_id} Empty or invalid content | Progress: {progress} | Success: {self.success_count} | Failed: {self.failed_count}")
                     return {"id": item_id, "status": "empty"}
 
+                self.success_count += 1
                 record = {
                     "title": title,
                     "link": url,
@@ -71,10 +81,14 @@ class DPRScraper:
                     "date": date,
                     "text": text
                 }
-                logger.info(f"[{self.source_name}] ID {item_id} Success: {title[:50]}...")
+                logger.info(f"[{self.source_name}] ID {item_id} Success: {title[:50]}... | Progress: {progress} | Success: {self.success_count} | Failed: {self.failed_count}")
                 return record
             except Exception as e:
-                logger.error(f"[{self.source_name}] ID {item_id} Error parsing json or crawl result: {e}")
+                if 'progress' not in locals():
+                    self.processed_count += 1
+                    progress = f"{self.processed_count}/{self.total_to_scrape}"
+                self.failed_count += 1
+                logger.error(f"[{self.source_name}] ID {item_id} Error parsing json or crawl result: {e} | Progress: {progress} | Success: {self.success_count} | Failed: {self.failed_count}")
                 return None
             finally:
                 await asyncio.sleep(SCRAPER_CONFIG["polite_delay"])
@@ -137,7 +151,7 @@ async def main():
 
     browser_config = BrowserConfig(headless=True)
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        scraper = DPRScraper(crawler)
+        scraper = DPRScraper(crawler, total_to_scrape)
         
         # Batch size for saving progress
         batch_size = 50 

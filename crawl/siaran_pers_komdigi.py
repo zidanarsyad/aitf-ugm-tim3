@@ -18,6 +18,8 @@ class KomdigiContentScraper:
     def __init__(self, crawler):
         self.crawler = crawler
         self.base_url = "https://www.komdigi.go.id"
+        self.success_count = 0
+        self.failed_count = 0
         self.schema = {
             "name": "Siaran Pers Detail",
             "baseSelector": "body",
@@ -90,8 +92,11 @@ class KomdigiContentScraper:
                     result = await self.crawler.arun(url=url, config=run_config)
                     
                     if result.success:
+                        self.success_count += 1
                         extracted_data = json.loads(result.extracted_content)
                         detail = extracted_data[0] if isinstance(extracted_data, list) and extracted_data else (extracted_data if extracted_data else {})
+                        
+                        logger.info(f"[KOMDIGI] Success: {item['title'][:50]}... | Progress: {index+1}/{len(items_to_crawl)} | Success: {self.success_count} | Failed: {self.failed_count}")
                         
                         new_results.append({
                             "title": item['title'],
@@ -101,9 +106,11 @@ class KomdigiContentScraper:
                             "text": str(detail.get('text', '')).strip()
                         })
                     else:
-                        logger.error(f"Failed to crawl {url}: {result.error_message}")
+                        self.failed_count += 1
+                        logger.error(f"[KOMDIGI] Failed to crawl {url}: {result.error_message} | Progress: {index+1}/{len(items_to_crawl)} | Success: {self.success_count} | Failed: {self.failed_count}")
                 except Exception as e:
-                    logger.error(f"Error processing {url}: {e}")
+                    self.failed_count += 1
+                    logger.error(f"[KOMDIGI] Error processing {url}: {e} | Progress: {index+1}/{len(items_to_crawl)} | Success: {self.success_count} | Failed: {self.failed_count}")
                 
                 await asyncio.sleep(0.5)
 
